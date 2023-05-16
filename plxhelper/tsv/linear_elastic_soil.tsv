@@ -1,0 +1,2 @@
+SoilType	UnitWeight	Identification	SoilModel	gammaUnsat	gammaSat	nu	Eref	GwUseDefaults	InterfaceStrengthDetermination	Rinter
+Grout	40	Lightweight Grout	Linear Elastic	0.023148	0.023148	0.2	2600	TRUE	Manual	0.3

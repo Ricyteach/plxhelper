@@ -1,0 +1,8 @@
+PlateType	Thickness	Term	Identification	MaterialType	Gamma	E1	StructNu12	d	YieldStress11	W11
+AASHTO Lane Load	5in	NA	AASHTO Lane Load 64 psf	Elastic	0.086805556	500000	0.15	5	nan	nan
+GRPLinerPipe	34mm	Short	GRPLinerPipe 34mm Short Term	Elastoplastic	0.064270833	1450377	0.2	1.33	17405	0.442225
+GRPLinerPipe	34mm	Long	GRPLinerPipe 34mm Long Term	Elastoplastic	0.064270833	580150.8	0.2	1.33	6962	0.442225
+GRPLinerPipe	22mm	Short	GRPLinerPipe 34mm Short Term	Elastoplastic	0.064270833	1450377	0.2	0.866	17405	0.187489
+GRPLinerPipe	22mm	Long	GRPLinerPipe 34mm Long Term	Elastoplastic	0.064270833	580150.8	0.2	0.866	6962	0.187489
+GRPLinerPipe	33mm	Short	GRPLinerPipe 34mm Short Term	Elastoplastic	0.064270833	1450377	0.2	1.30	17405	0.4225
+GRPLinerPipe	33mm	Long	GRPLinerPipe 34mm Long Term Elastoplastic	0.064270833	580150.8	0.2	1.30	6962	0.4225

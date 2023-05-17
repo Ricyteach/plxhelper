@@ -127,20 +127,20 @@ class phase:
             # run phase setup
             p.func(p.phase_obj)
 
-    def PhaseException(Exception):
+    class PhaseException(Exception):
         ...
 
-def g_i_method(method_name):
+def _g_i_method(method_name):
     """Used to delay calls to g_i method until after it's been initialized."""
     def wrapped(*args, **kwargs):
         return getattr(g_i, method_name)(*args, **kwargs)
     return wrapped
 
 MATERIAL_TYPE_DICT = dict(
-    linear_elastic_soil=(g_i_method("soilmat"), linear_elastic_soil.soilmat_kwargs),
-    duncan_selig=(g_i_method("soilmat"), duncan_selig.soilmat_kwargs),
-    duncan_selig_interpolated=(g_i_method("soilmat"), duncan_selig.soilmat_interpolated_kwargs),
-    plate=(g_i_method("platemat"), plate.platemat_kwargs),
+    linear_elastic_soil=(_g_i_method("soilmat"), linear_elastic_soil.soilmat_kwargs),
+    duncan_selig=(_g_i_method("soilmat"), duncan_selig.soilmat_kwargs),
+    duncan_selig_interpolated=(_g_i_method("soilmat"), duncan_selig.soilmat_interpolated_kwargs),
+    plate=(_g_i_method("platemat"), plate.platemat_kwargs),
 )
 
 def material_creator(type_name, *args, **kwargs):

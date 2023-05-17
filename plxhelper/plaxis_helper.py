@@ -5,14 +5,16 @@ import plxhelper.linear_elastic_soil as linear_elastic_soil
 import plxhelper.duncan_selig as duncan_selig
 import plxhelper.plate as plate
 
-s_i, g_i = new_server(address='localhost', port=10000, password='python')
+
+def connect_server():
+    global s_i, g_i
+    s_i, g_i = new_server(address='localhost', port=10000, password='python')
 
 def add_soil_layer_materials(soil_materials_list):
     """Set the soil layer materials.
     
     Can't be run until after layers created in a borehole.
     Because Plaxis is stupid."""
-    breakpoint()
     for layer, soil_material_obj in zip(g_i.Soillayers, soil_materials_list):
         layer.Soil.Material = soil_material_obj
 
@@ -128,11 +130,17 @@ class phase:
     def PhaseException(Exception):
         ...
 
+def g_i_method(method_name):
+    """Used to delay calls to g_i method until after it's been initialized."""
+    def wrapped(*args, **kwargs):
+        return getattr(g_i, method_name)(*args, **kwargs)
+    return wrapped
+
 MATERIAL_TYPE_DICT = dict(
-    linear_elastic_soil=(g_i.soilmat, linear_elastic_soil.soilmat_kwargs),
-    duncan_selig=(g_i.soilmat, duncan_selig.soilmat_kwargs),
-    duncan_selig_interpolated=(g_i.soilmat, duncan_selig.soilmat_interpolated_kwargs),
-    plate=(g_i.platemat, plate.platemat_kwargs),
+    linear_elastic_soil=(g_i_method("soilmat"), linear_elastic_soil.soilmat_kwargs),
+    duncan_selig=(g_i_method("soilmat"), duncan_selig.soilmat_kwargs),
+    duncan_selig_interpolated=(g_i_method("soilmat"), duncan_selig.soilmat_interpolated_kwargs),
+    plate=(g_i_method("platemat"), plate.platemat_kwargs),
 )
 
 def material_creator(type_name, *args, **kwargs):

@@ -1,7 +1,7 @@
 """standard routine for create a single pipe reline project"""
 
 import pandas as pd
-from plxhelper.plaxis_helper import g_i, s_i, add_pipe, process_boreholes, phase, material_creator, new_server, material_creator
+from plxhelper.plaxis_helper import connect_server, add_pipe, process_boreholes, phase, material_creator, new_server, material_creator
 from plxhelper.exceptions import PlaxisHelperError
 import plxhelper.live_load as live_load
 
@@ -13,6 +13,10 @@ def run_input(xmin, ymin, xmax, ymax, grade_el, h_cover_in, h_parent, h_AVG_in, 
               parent_shape_info_dict, reline_shape_info_dict, boreholes_dict, 
               annular_fill_type, soil_layer_materials_list, 
               short_term_reline_type, long_term_reline_type):
+
+    connect_server()
+
+    from plxhelper.plaxis_helper import s_i, g_i
 
     s_i.new()
     g_i.Project.setproperties("UnitForce", "lbf", "UnitLength", "in")

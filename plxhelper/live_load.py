@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 import pathlib
-from plxhelper.plaxis_helper import *
+import plxhelper.plaxis_helper as plaxis_helper
 
 tsv_path = pathlib.Path(__file__).parent / "tsv"
 
@@ -46,10 +46,10 @@ def build_patch_dataframe(xyz, df):
     return result_df
 
 def _patch_series_to_surface_load_obj(patch_series):
-    return g_i.surfload(*patch_series["x1":"z4"], "sigz", -patch_series["Pressure"])
+    return plaxis_helper.g_i.surfload(*patch_series["x1":"z4"], "sigz", -patch_series["Pressure"])
 
 def _patch_dataframe_to_surface_load_group(patch_dataframe):
-    return g_i.group(list(patch_dataframe.loc[:].apply(_patch_series_to_surface_load_obj, axis=1, result_type="expand")[1]))
+    return plaxis_helper.g_i.group(list(patch_dataframe.loc[:].apply(_patch_series_to_surface_load_obj, axis=1, result_type="expand")[1]))
 
 def surface_load_group(live_load_name, xyz):
     live_load_dataframe = LIVE_LOAD_DATAFRAME.loc[[live_load_name]]

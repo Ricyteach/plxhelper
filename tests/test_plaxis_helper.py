@@ -7,55 +7,17 @@ def test_g_i_connected(plaxis_helper, g_i, s_i):
     assert plaxis_helper.g_i is g_i
 
 
-@pytest.fixture
-def g_i_soilmat(g_i):
-    g_i.soilmat = lambda *args, **kwargs: object()
-
-
-@pytest.fixture
-def g_i_platemat(g_i):
-    g_i.platemat = lambda *args, **kwargs: object()
-
-
 @pytest.fixture(params=[
     ("linear_elastic_soil", "Grout", 40  # pcf
      ),
     ("plate", "GRPLinerPipe", "34mm", "Short")
 ])
-def material_type(request, g_i_soilmat, g_i_platemat):
+def material_type(request):
     return request.param
 
 
 def test_create_material(plaxis_helper, material_type):
     assert plaxis_helper.material_creator(*material_type)()
-
-
-@pytest.fixture
-def set_properties_mixin():
-    class SetPropertiesMixin:
-        def setproperties(self, *args):
-            ...
-    return SetPropertiesMixin
-
-
-@pytest.fixture
-def segment(set_properties_mixin):
-    class Segment():
-        ArcProperties = set_properties_mixin()
-        LineProperties = set_properties_mixin()
-    return Segment
-
-
-@pytest.fixture
-def g_i_polycurve(g_i, segment):
-    class Polycurve:
-        def add(self):
-            return segment()
-        def extendtosymmetryaxis(self):
-            ...
-        def symmetricclose(self):
-            ...
-    g_i.polycurve = lambda *args, **kwargs: Polycurve()
 
 
 @pytest.fixture(params=[(
@@ -80,7 +42,7 @@ def g_i_polycurve(g_i, segment):
             ]
         )),
 ])
-def add_pipe_params(request, g_i_polycurve):
+def add_pipe_params(request):
     return request.param
 
 

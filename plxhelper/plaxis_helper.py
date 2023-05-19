@@ -122,7 +122,7 @@ class phase:
         # moves through each node referenced from self downwards
         nodes_to_visit = [self]
         while len(nodes_to_visit) > 0:
-            yield current_node := nodes_to_visit.pop()
+            yield (current_node := nodes_to_visit.pop())
             nodes_to_visit += current_node.children
 
     def __call__(self, func):

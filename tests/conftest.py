@@ -1,21 +1,22 @@
 import pytest
+import plaxismock as pm
 
 
 @pytest.fixture(scope="module")
 def g_i():
-    return type("GI", (), {})()
+    return pm.PlxProxyGlobalObjectMock()
 
 
 @pytest.fixture
 def s_i():
-    return type("SI", (), {})()
+    return pm.ServerMock()
 
 
 @pytest.fixture
-def patch_plxscripting_new_server(g_i, s_i, monkeypatch):
-    import plxscripting.easy
-    monkeypatch.setattr(plxscripting.easy, "new_server", new_server := (lambda *args, **kwargs: (s_i, g_i)))
-    assert new_server is plxscripting.easy.new_server
+def patch_plxscripting_new_server(g_i, s_i, mocker):
+    mocker.patch('plxscripting.easy.new_server', autospec=True)
+    from plxscripting.easy import new_server
+    new_server.return_value = (s_i, g_i)
 
 
 @pytest.fixture

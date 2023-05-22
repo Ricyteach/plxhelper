@@ -8,12 +8,12 @@ import plxhelper.plate as plate
 
 def connect_server():
     global s_i, g_i
-    s_i, g_i = new_server(address='localhost', port=10000, password='python')
+    s_i, g_i = new_server(address="localhost", port=10000, password="python")
 
 
 def add_soil_layer_materials(soil_materials_list):
     """Set the soil layer materials.
-    
+
     Can't be run until after layers created in a borehole.
     Because Plaxis is stupid."""
     for layer, soil_material_obj in zip(g_i.Soillayers, soil_materials_list):
@@ -43,7 +43,10 @@ def process_boreholes(boreholes_dict, layer_soilmat_obj_list):
         add_soil_layer_materials(iter_soil_layer_materials_list)
         borehole_g.Head = borehole_info_dict.get("water_table_el", 0)
         if top_el := borehole_info_dict.get("top_el"):
-            for bv_layer_zone_obj in (getattr(g_i, f"BVLayerZone_{n + 1}") for n in range(len(layer_soilmat_obj_list))):
+            for bv_layer_zone_obj in (
+                getattr(g_i, f"BVLayerZone_{n + 1}")
+                for n in range(len(layer_soilmat_obj_list))
+            ):
                 bv_layer_zone_obj.Top = top_el
                 for layer_th in borehole_info_dict["layers"]:
                     bv_layer_zone_obj.Bottom = top_el - layer_th
@@ -78,14 +81,18 @@ def _add_symmetric_extend(poly_curve_obj, segment_info):
     poly_curve_obj.extendtosymmetryaxis()
     # sometimes this can return multiple segments so...:
     if segment_info:
-        raise Exception("Unsupported; the return of an extended polycurve is a tad complex")
+        raise Exception(
+            "Unsupported; the return of an extended polycurve is a tad complex"
+        )
 
 
 def _add_symmetric_close(poly_curve_obj, segment_info):
     poly_curve_obj.symmetricclose()
     # sometimes this can return multiple segments so...:
     if segment_info:
-        raise Exception("Unsupported; the return of a closed polycurve is a tad complex")
+        raise Exception(
+            "Unsupported; the return of a closed polycurve is a tad complex"
+        )
 
 
 _SEGMENT_ADD_DICT = dict(
@@ -134,7 +141,11 @@ class phase:
             raise phase.PhaseException("Can only process starting with initial phase.")
         for p in self.traverse():
             # add phase to plaxis
-            p.phase_obj = (g_i.Phases[0] if p.parentphase is None else g_i.phase(p.parentphase.phase_obj))
+            p.phase_obj = (
+                g_i.Phases[0]
+                if p.parentphase is None
+                else g_i.phase(p.parentphase.phase_obj)
+            )
             # run phase setup
             p.func(p.phase_obj)
 
@@ -154,13 +165,16 @@ def _g_i_method(method_name):
 MATERIAL_TYPE_DICT = dict(
     linear_elastic_soil=(_g_i_method("soilmat"), linear_elastic_soil.soilmat_kwargs),
     duncan_selig=(_g_i_method("soilmat"), duncan_selig.soilmat_kwargs),
-    duncan_selig_interpolated=(_g_i_method("soilmat"), duncan_selig.soilmat_interpolated_kwargs),
+    duncan_selig_interpolated=(
+        _g_i_method("soilmat"),
+        duncan_selig.soilmat_interpolated_kwargs,
+    ),
     plate=(_g_i_method("platemat"), plate.platemat_kwargs),
 )
 
 
 def material_creator(type_name, *args, **kwargs):
-    """Makes a material creator function. 
+    """Makes a material creator function.
     Creator tries to load it using an existing canned material. Makes a new one using *args otherwise.
     """
 

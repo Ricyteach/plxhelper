@@ -7,11 +7,12 @@ def test_g_i_connected(plaxis_helper, g_i, s_i):
     assert plaxis_helper.g_i is g_i
 
 
-@pytest.fixture(params=[
-    ("linear_elastic_soil", "Grout", 40  # pcf
-     ),
-    ("plate", "GRPLinerPipe", "34mm", "Short")
-])
+@pytest.fixture(
+    params=[
+        ("linear_elastic_soil", "Grout", 40),  # pcf
+        ("plate", "GRPLinerPipe", "34mm", "Short"),
+    ]
+)
 def material_type(request):
     return request.param
 
@@ -20,28 +21,35 @@ def test_create_material(plaxis_helper, material_type):
     assert plaxis_helper.material_creator(*material_type)()
 
 
-@pytest.fixture(params=[(
-        (0, -180, 100), ((1, 0, 0), (0, 0, 1)),
-        dict(
-            segments=[
-                dict(
-                    SegmentType="Arc",
-                    RelativeStartAngle1=180,  # deg; 180 because starting at crown
-                    Radius=33.5,  # in
-                    CentralAngle=85.2,  # deg
-                ),
-                dict(
-                    SegmentType="Arc",
-                    Radius=8.875,  # in
-                    CentralAngle=78.3,  # deg
-                ),
-                dict(SegmentType="SymmetricExtend",
-                     ),
-                dict(SegmentType="SymmetricClose",
-                     ),
-            ]
-        )),
-])
+@pytest.fixture(
+    params=[
+        (
+            (0, -180, 100),
+            ((1, 0, 0), (0, 0, 1)),
+            dict(
+                segments=[
+                    dict(
+                        SegmentType="Arc",
+                        RelativeStartAngle1=180,  # deg; 180 because starting at crown
+                        Radius=33.5,  # in
+                        CentralAngle=85.2,  # deg
+                    ),
+                    dict(
+                        SegmentType="Arc",
+                        Radius=8.875,  # in
+                        CentralAngle=78.3,  # deg
+                    ),
+                    dict(
+                        SegmentType="SymmetricExtend",
+                    ),
+                    dict(
+                        SegmentType="SymmetricClose",
+                    ),
+                ]
+            ),
+        ),
+    ]
+)
 def add_pipe_params(request):
     return request.param
 

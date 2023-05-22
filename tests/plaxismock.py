@@ -2,15 +2,15 @@
 
 from unittest import mock
 
-MOCK_OK = 'OK'
+MOCK_OK = "OK"
 
 
-@mock.patch('plxscripting.server.Server')
+@mock.patch("plxscripting.server.Server")
 class ServerMock:
     pass
 
 
-@mock.patch('plxscripting.plxproxy.PlxProxyGlobalObject')
+@mock.patch("plxscripting.plxproxy.PlxProxyGlobalObject")
 class PlxProxyGlobalObjectMock:
     def gotostructures(self):
         return MOCK_OK
@@ -36,7 +36,7 @@ class SetPropertiesMock:
         ...
 
 
-class SegmentMock():
+class SegmentMock:
     def __init__(self):
         self.ArcProperties = SetPropertiesMock()
         self.LineProperties = SetPropertiesMock()

@@ -87,3 +87,6 @@ class TaskChain(MutableSequence):
 
     def __iter__(self):
         yield from self._seq
+
+    def __repr__(self):
+        return f'{type(self).__name__}([{", ".join(f"{step.__name__!s}" for step in self._seq)}])'

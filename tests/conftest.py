@@ -2,7 +2,7 @@ import pytest
 import plaxismock as pm
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def g_i():
     return pm.PlxProxyGlobalObjectMock()
 

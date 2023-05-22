@@ -79,3 +79,15 @@ def test_task_chain_step_1_by_name(task_chain_start, task_chain_step_1, task_cha
                                                                           task_chain_step_1(),)
     assert len(task_chain_getattr) == 2
     assert task_chain_getattr._seq == [task_chain_start, task_chain_step_1]
+
+
+@pytest.fixture
+def mixed_chain(task_chain, task_chain_step_1):
+    task_chain[1:1] = task_chain
+    return task_chain
+
+
+def test_mixed_chain(mixed_chain, task_chain_start, task_chain_step_1):
+    assert len(mixed_chain) == 4
+    assert all(mixed_chain())
+    assert tuple(mixed_chain()) == (task_chain_start(), task_chain_start(), task_chain_step_1(), task_chain_step_1())

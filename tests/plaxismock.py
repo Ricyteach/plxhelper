@@ -1,4 +1,8 @@
+"""Mocking out the Plaxis 3D API behavior for testing of helper scripts."""
+
 from unittest import mock
+
+MOCK_OK = 'OK'
 
 
 @mock.patch('plxscripting.server.Server')
@@ -8,6 +12,15 @@ class ServerMock:
 
 @mock.patch('plxscripting.plxproxy.PlxProxyGlobalObject')
 class PlxProxyGlobalObjectMock:
+    def gotostructures(self):
+        return MOCK_OK
+
+    def gotomesh(self):
+        return MOCK_OK
+
+    def calculate(self):
+        return MOCK_OK
+
     def soilmat(self, *args, **kwargs):
         return object()
 

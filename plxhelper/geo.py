@@ -74,9 +74,7 @@ class BoundingBox(NamedTuple, Generic[Point_co]):
     p_max: Point_co  # xMax, yMax, zMax
 
     @classmethod
-    def from_min_max(
-        cls, p_min: tuple[float, float, float], p_max: tuple[float, float, float]
-    ) -> BoundingBox:
+    def from_min_max(cls, p_min: Point_co, p_max: Point_co) -> BoundingBox:
         if any(
             (_min := coord_min) > (_max := coord_max) and (_field := field)
             for coord_min, coord_max, field in zip(p_min, p_max, "xyz", strict=True)
@@ -90,14 +88,8 @@ class BoundingBox(NamedTuple, Generic[Point_co]):
     def from_plx(plx_obj: PlxProtocol) -> BoundingBox:
         attr_list = ("xMin", "yMin", "zMin", "xMax", "yMax", "zMax")
         try:
-            p_min = cast(
-                tuple(floatify(getattr(plx_obj.BoundingBox, k)) for k in attr_list[:3]),
-                tuple[float, float, float],
-            )
-            p_max = cast(
-                tuple(floatify(getattr(plx_obj.BoundingBox, k)) for k in attr_list[3:]),
-                tuple[float, float, float],
-            )
+            p_min = tuple(floatify(getattr(plx_obj.BoundingBox, k)) for k in attr_list[:3])
+            p_max = tuple(floatify(getattr(plx_obj.BoundingBox, k)) for k in attr_list[3:])
         except AttributeError:
             pass
         else:

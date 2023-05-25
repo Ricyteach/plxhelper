@@ -271,7 +271,13 @@ def skew_extrude(cross_section_obj, skew, length=None, xyz_vector=None):
         (group_obj := g_i.group(cross_section_obj)), xyz_extrude
     )
     g_i.ungroup(group_obj)
-    # todo: finish this
-    rectangle = g_i.rectangle(BoundingBox(Point(0,0,0), Point(1,1,1)))
-    g_i.intersect(extruded_obj, rectangle, True)
-    return NotImplemented
+    rectangle = g_i.surface(*bounding_box.resized(10).points)
+    result = []
+    for extruded in extruded_obj:
+        intersection_list: list = g_i.intersect(extruded, rectangle, True)
+        g_i.delete(extruded)
+        del intersection_list[intersection_list.index(rectangle)]
+        keep = intersection_list[0]
+        result.append(keep)
+    g_i.delete(rectangle)
+    return result

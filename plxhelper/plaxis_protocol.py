@@ -27,5 +27,5 @@ PlxListable = list[PlxObj]
 PlxProtocol = PlxObj | PlxListable
 
 
-def floatify(value):
+def floatify(value) -> float:
     return float(str(value))

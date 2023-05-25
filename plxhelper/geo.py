@@ -8,10 +8,39 @@ from plxhelper.plaxis_protocol import PlxProtocol, floatify
 Coord = NewType("Coord", float)
 
 
+class Vector(NamedTuple):
+    i: Coord
+    j: Coord
+    k: Coord
+
+    def __add__(self, other: Vector) -> Vector:
+        return Vector(*(rhs + lhs for rhs, lhs in zip(self, other)))
+
+    def __sub__(self, other: Vector) -> Vector:
+        return self + -other
+
+    __radd__ = __add__
+
+    def __neg__(self) -> Vector:
+        return Vector(*(-coord for coord in self))
+
+    def __mul__(self, other: float) -> Vector:
+        return Vector(*(other * value for value in self))
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, other: float) -> Vector:
+        return self * (1 / other)
+
+    @property
+    def magnitude(self) -> float:
+        return dist(self, (0, 0, 0))
+
+
 class Point(NamedTuple):
-    x: float
-    y: float
-    z: float = None
+    x: Coord
+    y: Coord
+    z: Coord
 
 
 class BoundingBox(NamedTuple):
@@ -85,19 +114,25 @@ class BoundingBox(NamedTuple):
         """Finds the height of a bounding_box in the Z direction of 3D space."""
 
         # Return the height of the rectangle.
-        return self.p_max.z - self.p_min.z
+        return abs(self.p_max.z - self.p_min.z)
 
-    def resized_bounding_box(bounding_box, increment: float) -> BoundingBox:
+    @property
+    def magnitude(self) -> float:
+        return dist(*self)
+
+    @property
+    def vector(self) -> Vector:
+        return Vector(*self.p_max) - Vector(*self.p_min)
+
+    def resized(self, increment: float) -> BoundingBox:
         """Increments the (p_min, p_max) point tuples in 3D space of a bounding box
 
-        Returns: A (i_min, i_max) point tuple that is on the same line as (p_min, p_max), but the distance between (
-        i_min, i_max) has been resized by `increment`.
+        Returns: A point that is on the same line as (p_min, p_max), but the distance between (i_min, i_max) has been
+        resized by `increment`.
         """
 
-        p_min, p_max = bounding_box
-
-        # Return the incremented bounding_box
-
-        i_min, i_max = None, None
-
-        return i_min, i_max
+        # get unit vector for the box
+        change = self.vector / self.magnitude * increment / 2
+        p_min_vec = Vector(*self.p_min) - change
+        p_max_vec = Vector(*self.p_max) + change
+        return self.__class__(Point(*p_min_vec), Point(*p_max_vec))

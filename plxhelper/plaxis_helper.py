@@ -1,9 +1,14 @@
 """helpers for creating Plaxis 3D projects"""
+from math import sin, radians, dist
+from typing import TypedDict, Required, NotRequired
 
 from plxscripting.easy import new_server
 import plxhelper.linear_elastic_soil as linear_elastic_soil
 import plxhelper.duncan_selig as duncan_selig
 import plxhelper.plate as plate
+from plxhelper.geo import BoundingBox, Point
+
+from_plx = BoundingBox.from_plx
 
 
 def connect_server():
@@ -52,11 +57,28 @@ def process_boreholes(boreholes_dict, layer_soilmat_obj_list):
                     bv_layer_zone_obj.Bottom = top_el - layer_th
 
 
-def add_pipe(xyz, xyz_direction, shape_info_dict):
-    poly_curve_obj = g_i.polycurve(xyz, *xyz_direction)
+class PipeStructure(TypedDict):
+    pipe: Required[object]
+    footing1: NotRequired[object]
+    footing2: NotRequired[object]
+    select_backfill: NotRequired[object]
+
+
+def add_pipe(xyz, xyz_direction, shape_info_dict) -> PipeStructure:
+    results = dict(
+        poly_curve_obj=(poly_curve_obj := g_i.polycurve(xyz, *xyz_direction))
+    )
     for segment_info in shape_info_dict["segments"]:
         _add_segment(poly_curve_obj, segment_info)
-    return poly_curve_obj
+
+    for offset, value in (
+        (offset, shape_info_dict.get(offset)) for offset in ("Offset1", "Offset2")
+    ):
+        if value is not None:
+            setattr(poly_curve_obj, offset, value)
+    if footing_info_dict := shape_info_dict.get("footing"):
+        results.update(**add_footing_pair(*xyz, xyz_direction, **footing_info_dict))
+    return results
 
 
 def _add_segment(poly_curve_obj, segment_info):
@@ -101,6 +123,44 @@ _SEGMENT_ADD_DICT = dict(
     SymmetricExtend=_add_symmetric_extend,
     SymmetricClose=_add_symmetric_close,
 )
+
+
+class FootingPair(TypedDict):
+    footing1: Required[object]
+    footing2: Required[object]
+
+
+def add_footing_pair(
+    x,
+    y,
+    z,
+    xyz_direction,
+    span,
+    rise,
+    width,
+    height,
+    outside,
+    key,
+) -> FootingPair:
+    dx = span / 2 + outside
+    z = z - rise + key - height
+    footing_objs = []
+    for plus_or_minus in (lambda lhs: lhs * value for value in (1, -1)):
+        xi = x + plus_or_minus(dx)
+        footing_curve = g_i.polycurve(
+            (xi, y, z),
+            *xyz_direction,  # start and direction (same as pipe)
+            *("line", 90, height),
+            *("line", plus_or_minus(90), width),
+            *("line", plus_or_minus(90), height),
+            *("line", plus_or_minus(90), width),
+        )[
+            0
+        ]  # index 0 because this returns a list of stuff, not just the curve. sigh. Plaxis.
+        footing_objs.append(g_i.surface(footing_curve))
+        g_i.delete(footing_curve)
+    footing_pair = dict(zip(("footing1", "footing2"), footing_objs))
+    return footing_pair
 
 
 class phase:
@@ -184,3 +244,34 @@ def material_creator(type_name, *args, **kwargs):
         return xxxmat(*soilmat_kwargs.items())
 
     return create_material
+
+
+def skew_extrude(cross_section_obj, skew, length=None, xyz_vector=None):
+    """The cross_section_obj needs to be carefully supplied because this function assumes it is oriented in a
+    "positive" direction, and is a "regular", symmetrical type of object - no weird shapes.
+
+    When walking forward, left turns are positive skew, right turns are negative skew.
+
+         Negative skew --> __________
+                          /
+    Forward -->  ________/<--- Positive skew
+    """
+    if xyz_vector is None:
+        raise NotImplementedError("will support grabbing xyz_vector later")
+    if abs(skew) > 90:
+        raise ValueError("Skew limited to 90 degrees")
+    bounding_box = from_plx(cross_section_obj)
+    magnitude = dist((0, 0, 0), xyz_vector)
+    if (center_length := length) is None:
+        center_length = magnitude
+    xyz_direction = tuple(u / magnitude for u in xyz_vector)
+    extrude_length = center_length + bounding_box.width / 2 * sin(radians(skew))
+    xyz_extrude = tuple(u * extrude_length for u in xyz_direction)
+    extruded_obj: list | object = g_i.extrude(
+        (group_obj := g_i.group(cross_section_obj)), xyz_extrude
+    )
+    g_i.ungroup(group_obj)
+    # todo: finish this
+    rectangle = g_i.rectangle(BoundingBox(Point(0,0,0), Point(1,1,1)))
+    g_i.intersect(extruded_obj, rectangle, True)
+    return NotImplemented

@@ -30,6 +30,9 @@ class PlxProxyGlobalObjectMock:
     def polycurve(self, *args, **kwargs):
         return PolycurveMock()
 
+    def group(self, *args):
+        return GroupMock(*args)
+
 
 class SetPropertiesMock:
     def setproperties(self, *args):
@@ -51,3 +54,11 @@ class PolycurveMock:
 
     def symmetricclose(self):
         ...
+
+
+class GroupMock(list):
+    def __new__(cls, *args):
+        return super().__new__(cls, args)
+
+    def __init__(self, *args):
+        super().__init__(args)

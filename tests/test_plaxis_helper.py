@@ -48,6 +48,32 @@ def test_create_material(plaxis_helper, material_type):
                 ]
             ),
         ),
+        (
+            (0, -180, 100),
+            ((1, 0, 0), (0, 0, 1)),
+            dict(
+                Offset1=318 / 2,
+                Offset2=-159,
+                footing=(
+                    footing_info := dict(
+                        span=318,
+                        rise=159,
+                        width=86,
+                        height=30,
+                        outside=43,
+                        key=5,
+                    )
+                ),
+                segments=[
+                    dict(
+                        SegmentType="Arc",
+                        RelativeStartAngle1=90,  # deg; 90 because starting at invert
+                        Radius=159,  # in
+                        CentralAngle=180,  # deg
+                    ),
+                ],
+            ),
+        ),
     ]
 )
 def add_pipe_params(request):

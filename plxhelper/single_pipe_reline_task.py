@@ -102,7 +102,6 @@ def task_chain(
 
     @single_pipe_reline.link
     def host_pipe_setup():
-
         ns.l_parent = ymax - ymin  # in
         # draw shape starting at crown z elevation
         ns.z_parent_crown = grade_el - (h_cover_in - (h_parent - h_AVG_in) / 2)
@@ -159,7 +158,6 @@ def task_chain(
 
     @single_pipe_reline.link
     def mesh_project():
-
         g_i.gotomesh()
         g_i.mesh(
             "Coarseness",

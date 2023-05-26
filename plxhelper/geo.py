@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from math import dist
+from math import dist, radians, sin, cos
 from typing import NamedTuple, cast, TypeVar, Generic
 
 from plxhelper.plaxis_protocol import PlxProtocol, floatify
@@ -15,7 +15,7 @@ class Vector(NamedTuple, Generic[Coord_co, Vector_co]):
     j: Coord_co
     k: Coord_co
 
-    def _coerce(self, type_):
+    def _coerce(self: Vector_co, type_: type[Vector_co]):
         try:
             return type_(v for v, _ in zip(self, range(3), strict=True))
         except TypeError:
@@ -53,6 +53,14 @@ class Vector(NamedTuple, Generic[Coord_co, Vector_co]):
     def magnitude(self) -> float:
         return dist(self, (0, 0, 0))
 
+    def rotate_z(self: Vector_co, θ_deg: float) -> Vector_co:
+        x, y, z = self
+        θ_rad = radians(θ_deg)
+        i = x * cos(θ_rad) - y * sin(θ_rad)
+        j = x * sin(θ_rad) + y * cos(θ_rad)
+        k = z
+        return Vector._coerce((i, j, k), type(self))
+
 
 class Point(NamedTuple):
     x: Coord_co
@@ -88,8 +96,12 @@ class BoundingBox(NamedTuple, Generic[Point_co]):
     def from_plx(plx_obj: PlxProtocol) -> BoundingBox:
         attr_list = ("xMin", "yMin", "zMin", "xMax", "yMax", "zMax")
         try:
-            p_min = tuple(floatify(getattr(plx_obj.BoundingBox, k)) for k in attr_list[:3])
-            p_max = tuple(floatify(getattr(plx_obj.BoundingBox, k)) for k in attr_list[3:])
+            p_min = tuple(
+                floatify(getattr(plx_obj.BoundingBox, k)) for k in attr_list[:3]
+            )
+            p_max = tuple(
+                floatify(getattr(plx_obj.BoundingBox, k)) for k in attr_list[3:]
+            )
         except AttributeError:
             pass
         else:
@@ -192,3 +204,21 @@ class BoundingBox(NamedTuple, Generic[Point_co]):
         p_min_vec = Vector(*self.p_min) - change
         p_max_vec = Vector(*self.p_max) + change
         return self.__class__.from_min_max(Point(*p_min_vec), Point(*p_max_vec))
+
+    def rotated(self, angle_d):
+        vector_to_rotate = self.vector / 2
+        vector_rotated = vector_to_rotate.rotate_z(angle_d)
+        vector_move = vector_rotated - vector_to_rotate
+        p_min_moved = self.p_min - vector_move
+        p_max_moved = self.p_max + vector_move
+        p_min = (
+            min(p_min_moved.x, p_max_moved.x),
+            min(p_min_moved.y, p_max_moved.y),
+            p_min_moved.z,
+        )
+        p_max = (
+            max(p_min_moved.x, p_max_moved.x),
+            max(p_min_moved.y, p_max_moved.y),
+            p_max_moved.z,
+        )
+        return BoundingBox.from_min_max(p_min, p_max)

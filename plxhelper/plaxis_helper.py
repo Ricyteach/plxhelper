@@ -1,14 +1,11 @@
 """helpers for creating Plaxis 3D projects"""
-from math import sin, radians, dist
 from typing import TypedDict, Required, NotRequired
 
 from plxscripting.easy import new_server
 import plxhelper.linear_elastic_soil as linear_elastic_soil
 import plxhelper.duncan_selig as duncan_selig
 import plxhelper.plate as plate
-from plxhelper.geo import BoundingBox, Point
-
-from_plx = BoundingBox.from_plx
+from plxhelper.geo import Vector, Vector_co
 
 
 def connect_server():
@@ -64,10 +61,8 @@ class PipeStructure(TypedDict):
     select_backfill: NotRequired[object]
 
 
-def add_pipe(xyz, xyz_direction, shape_info_dict) -> PipeStructure:
-    results = dict(
-        poly_curve_obj=(poly_curve_obj := g_i.polycurve(xyz, *xyz_direction))
-    )
+def add_pipe_structure(xyz, shape_info_dict, axis1, axis2=(0, 0, 1)) -> PipeStructure:
+    results = dict(poly_curve_obj=(poly_curve_obj := g_i.polycurve(xyz, axis1, axis2)))
     for segment_info in shape_info_dict["segments"]:
         _add_segment(poly_curve_obj, segment_info)
 
@@ -77,7 +72,9 @@ def add_pipe(xyz, xyz_direction, shape_info_dict) -> PipeStructure:
         if value is not None:
             setattr(poly_curve_obj, offset, value)
     if footing_info_dict := shape_info_dict.get("footing"):
-        results.update(**add_footing_pair(*xyz, xyz_direction, **footing_info_dict))
+        results.update(
+            **add_footing_pair(*xyz, **footing_info_dict, axis1=axis1, axis2=axis2)
+        )
     return results
 
 
@@ -134,13 +131,14 @@ def add_footing_pair(
     x,
     y,
     z,
-    xyz_direction,
     span,
     rise,
     width,
     height,
     outside,
     key,
+    axis1,
+    axis2=(0, 0, 1),
 ) -> FootingPair:
     dx = span / 2 + outside
     z = z - rise + key - height
@@ -149,7 +147,8 @@ def add_footing_pair(
         xi = x + plus_or_minus(dx)
         footing_curve = g_i.polycurve(
             (xi, y, z),
-            *xyz_direction,  # start and direction (same as pipe)
+            axis1,
+            axis2,
             *("line", 90, height),
             *("line", plus_or_minus(90), width),
             *("line", plus_or_minus(90), height),
@@ -246,7 +245,7 @@ def material_creator(type_name, *args, **kwargs):
     return create_material
 
 
-def skew_extrude(cross_section_obj, skew, length=None, xyz_vector=None):
+def skew_extrude(cross_section_obj, skew, lengths=None, xyz_vectors=None):
     """The cross_section_obj needs to be carefully supplied because this function assumes it is oriented in a
     "positive" direction, and is a "regular", symmetrical type of object - no weird shapes.
 
@@ -256,28 +255,83 @@ def skew_extrude(cross_section_obj, skew, length=None, xyz_vector=None):
                           /
     Forward -->  ________/<--- Positive skew
     """
+
+
+def extrude(to_extrude, length=None, vector: Vector_co = None):
+    """Plaxis-extrude valid Plaxis objects (individual or lists/groups).
+
+    Supply either:
+    1) a vector direction and extrude length
+    2) just a vector representing the direction and length
+    3) just a length and derive the direction from the Plaxis objects (not yet supported)
+    """
+
+    xyz_vector = Vector(*vector)
     if xyz_vector is None:
         raise NotImplementedError("will support grabbing xyz_vector later")
-    if abs(skew) > 90:
-        raise ValueError("Skew limited to 90 degrees")
-    bounding_box = from_plx(cross_section_obj)
-    magnitude = dist((0, 0, 0), xyz_vector)
+    vec_magnitude = xyz_vector.magnitude
     if (center_length := length) is None:
-        center_length = magnitude
-    xyz_direction = tuple(u / magnitude for u in xyz_vector)
-    extrude_length = center_length + bounding_box.width / 2 * sin(radians(skew))
-    xyz_extrude = tuple(u * extrude_length for u in xyz_direction)
-    extruded_obj: list | object = g_i.extrude(
-        (group_obj := g_i.group(cross_section_obj)), xyz_extrude
+        center_length = vec_magnitude
+    xyz_direction = xyz_vector / vec_magnitude
+    xyz_extrude = xyz_direction * center_length
+    extruded_obj: list | object = list(
+        grp := g_i.group(g_i.extrude(to_extrude, xyz_extrude))
     )
-    g_i.ungroup(group_obj)
-    rectangle = g_i.surface(*bounding_box.resized(10).points)
-    result = []
-    for extruded in extruded_obj:
-        intersection_list: list = g_i.intersect(extruded, rectangle, True)
-        g_i.delete(extruded)
-        del intersection_list[intersection_list.index(rectangle)]
-        keep = intersection_list[0]
-        result.append(keep)
-    g_i.delete(rectangle)
-    return result
+    g_i.ungroup(grp)
+    # exclude non-Geometry entities (e.g., Soil)
+    return [obj for obj in extruded_obj if obj in g_i.Geometry]
+
+
+def cut(to_cut_obj, cutter_obj) -> list:
+    """Used to "cut" an object or group of objects using a "cutter" object.
+
+    Returns just the pieces of to_cut_obj.
+    """
+    if cutter_obj not in g_i.Surfaces:
+        raise TypeError("cutter_obj must be a Polygon or Surface")
+    # collection of the all the results of intersect actions
+    cut_list = []
+    # use group() to handle the case of 1 or multiple objects
+    group_to_cut = g_i.group(to_cut_obj)
+    # intersect with cutter_obj one item at a time (in case any items overlap)
+    for obj in group_to_cut:
+        intersect_result = g_i.intersect(obj, cutter_obj, True)
+        cut_list.extend(intersect_result)
+    # remove the group(); no longer needed
+    g_i.ungroup(group_to_cut)
+    # only need geometry objects (not interested in Soil objects)
+    cut_geometries = [obj for obj in cut_list if obj in g_i.Geometry]
+    # the cut_list includes pieces of cutter_obj and/or copies of cutter_obj itself
+    # remove these undesired pieces:
+    for intersect_result in cut_geometries[:]:
+        # assume all undesired pieces are in Surfaces
+        if intersect_result in g_i.Surfaces:
+            # intersect the piece with cutter_obj
+            sub_intersect_result = g_i.group(
+                g_i.intersect(intersect_result, cutter_obj, True)
+            )
+            # decide if the intersect_result should be removed from cut_geometries
+            if len(sub_intersect_result) > 1:
+                # more than 1 item means there could be an item to remove
+                # recombine the two items and then try to merge them with the cutter_obj
+                recombined_grp = g_i.group(g_i.combine(sub_intersect_result, True))
+                merged = g_i.mergeequivalents(cutter_obj, recombined_grp)
+                try:
+                    if merged == "No equivalent geometric objects found":
+                        raise Exception()
+                except Exception:
+                    # merge failed; the piece was NOT part of the cutter_obj
+                    g_i.delete(recombined_grp)
+                    continue
+                else:
+                    # merge succeeded; the piece was part of the cutter_obj
+                    g_i.delete(intersect_result)
+                    cut_geometries.remove(intersect_result)
+                finally:
+                    g_i.delete(sub_intersect_result)
+            else:
+                # only 1 item means the piece is the same geometry as the cutter_obj
+                g_i.delete(intersect_result)
+                cut_geometries.remove(intersect_result)
+                g_i.delete(sub_intersect_result)
+    return cut_geometries

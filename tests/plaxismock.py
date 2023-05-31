@@ -27,11 +27,19 @@ class PlxProxyGlobalObjectMock:
     def platemat(self, *args, **kwargs):
         return object()
 
-    def polycurve(self, *args, **kwargs):
+    def polycurve(self, xyz, axis1, axis2, *args, **kwargs):
+        if args:
+            return [PolycurveMock()]
         return PolycurveMock()
 
     def group(self, *args):
         return GroupMock(*args)
+
+    def surface(self, *args):
+        return object()
+
+    def delete(self, *args):
+        ...
 
 
 class SetPropertiesMock:

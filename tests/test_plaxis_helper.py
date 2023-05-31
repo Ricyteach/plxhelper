@@ -25,7 +25,6 @@ def test_create_material(plaxis_helper, material_type):
     params=[
         (
             (0, -180, 100),
-            ((1, 0, 0), (0, 0, 1)),
             dict(
                 segments=[
                     dict(
@@ -47,10 +46,11 @@ def test_create_material(plaxis_helper, material_type):
                     ),
                 ]
             ),
+            (1, 0, 0),
+            (0, 0, 1),
         ),
         (
             (0, -180, 100),
-            ((1, 0, 0), (0, 0, 1)),
             dict(
                 Offset1=318 / 2,
                 Offset2=-159,
@@ -73,6 +73,8 @@ def test_create_material(plaxis_helper, material_type):
                     ),
                 ],
             ),
+            (1, 0, 0),
+            (0, 0, 1),
         ),
     ]
 )
@@ -81,4 +83,4 @@ def add_pipe_params(request):
 
 
 def test_add_pipe(plaxis_helper, add_pipe_params):
-    assert plaxis_helper.add_pipe(*add_pipe_params)
+    assert plaxis_helper.add_pipe_structure(*add_pipe_params)

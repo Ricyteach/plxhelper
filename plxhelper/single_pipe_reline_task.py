@@ -3,7 +3,7 @@
 import pandas as pd
 from plxhelper.plaxis_helper import (
     connect_server,
-    add_pipe,
+    add_pipe_structure,
     process_boreholes,
     phase,
     new_server,
@@ -106,7 +106,7 @@ def task_chain(
         # draw shape starting at crown z elevation
         ns.z_parent_crown = grade_el - (h_cover_in - (h_parent - h_AVG_in) / 2)
 
-        parent_pipe_curve = add_pipe(
+        parent_pipe_curve = add_pipe_structure(
             xyz=(0, ymin, ns.z_parent_crown),
             xyz_direction=((1, 0, 0), (0, 0, 1)),
             shape_info_dict=parent_shape_info_dict,
@@ -135,9 +135,10 @@ def task_chain(
         print(f"z_parent_crown = {ns.z_parent_crown}")
         print(f"z_reline_crown) = {z_reline_crown}")
 
-        reline_pipe_curve = add_pipe(
+        reline_pipe_curve = add_pipe_structure(
             xyz=(0, ymin, z_reline_crown),
-            xyz_direction=((1, 0, 0), (0, 0, 1)),
+            axis1=(1, 0, 0),
+            axis2=(0, 0, 1),
             shape_info_dict=reline_shape_info_dict,
         )
 

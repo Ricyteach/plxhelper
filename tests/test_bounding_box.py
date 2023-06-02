@@ -1,5 +1,3 @@
-from math import radians
-
 import pytest
 from plxhelper.geo import BoundingBox, Point, Vector
 

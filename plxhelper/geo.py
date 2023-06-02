@@ -1,13 +1,30 @@
 from __future__ import annotations
 
-from math import dist, radians, sin, cos
-from typing import NamedTuple, cast, TypeVar, Generic
+from math import dist
+from typing import NamedTuple, TypeVar, Generic, Iterable
+
+from scipy.special import cosdg, sindg
 
 from plxhelper.plaxis_protocol import PlxProtocol, floatify
 
 Coord_co = TypeVar("Coord_co", bound=float)
 Vector_co = TypeVar("Vector_co", bound=tuple[float, float, float])
 Point_co = TypeVar("Point_co", covariant=True, bound=tuple[float, float, float])
+BoundingBox_co = TypeVar(
+    "BoundingBox_co",
+    covariant=True,
+    bound=tuple[tuple[float, float, float], tuple[float, float, float]],
+)
+D2Point_co = TypeVar(
+    "D2Point_co",
+    covariant=True,
+    bound=tuple[float, float],
+)
+D2PointPair_co = TypeVar(
+    "D2PointPair_co",
+    covariant=True,
+    bound=tuple[tuple[float, float], tuple[float, float]],
+)
 
 
 class Vector(NamedTuple, Generic[Coord_co, Vector_co]):
@@ -15,16 +32,16 @@ class Vector(NamedTuple, Generic[Coord_co, Vector_co]):
     j: Coord_co
     k: Coord_co
 
-    def _coerce(self: Vector_co, type_: type[Vector_co]):
+    def _coerce(self: Iterable[float], type_: type[Vector_co]) -> Vector_co:
         try:
             return type_(v for v, _ in zip(self, range(3), strict=True))
         except TypeError:
             return type_(*(v for v, _ in zip(self, range(3), strict=True)))
 
     def __add__(self, other: Vector_co) -> Vector_co:
-        return Vector(
-            *(lhs + rhs for lhs, rhs in zip(self, other, strict=True))
-        )._coerce(type(other))
+        return Vector._coerce(
+            (lhs + rhs for lhs, rhs in zip(self, other, strict=True)), type(other)
+        )
 
     __radd__ = __add__
 
@@ -55,9 +72,8 @@ class Vector(NamedTuple, Generic[Coord_co, Vector_co]):
 
     def rotate_z(self: Vector_co, θ_deg: float) -> Vector_co:
         x, y, z = self
-        θ_rad = radians(θ_deg)
-        i = x * cos(θ_rad) - y * sin(θ_rad)
-        j = x * sin(θ_rad) + y * cos(θ_rad)
+        i = x * cosdg(θ_deg) - y * sindg(θ_deg)
+        j = x * sindg(θ_deg) + y * cosdg(θ_deg)
         k = z
         return Vector._coerce((i, j, k), type(self))
 
@@ -70,8 +86,8 @@ class Point(NamedTuple):
 
 class BoundingBox(NamedTuple, Generic[Point_co]):
     """
-    A rectangle with one corner at p_min, and another corner at p_max.
-    The rectangle is always assumed to be oriented so that the rectangle height is along the z-axis.
+    A rectangle or box with one corner at p_min, and another corner at p_max.
+    The BB is always assumed to be oriented so that the BB height is along the z-axis.
 
     Attributes:
         p_min: The minimum point of the bounding box.
@@ -221,4 +237,9 @@ class BoundingBox(NamedTuple, Generic[Point_co]):
             max(p_min_moved.y, p_max_moved.y),
             p_max_moved.z,
         )
-        return BoundingBox.from_min_max(p_min, p_max)
+        return self.__class__.from_min_max(p_min, p_max)
+
+    def translated(self, vector: Vector_co):
+        return self.__class__.from_min_max(
+            Vector.__add__(self.p_min, vector), Vector.__add__(self.p_max, vector)
+        )

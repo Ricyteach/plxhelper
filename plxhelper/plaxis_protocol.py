@@ -27,5 +27,12 @@ PlxListable = list[PlxObj]
 PlxProtocol = PlxObj | PlxListable
 
 
+class FloatifyError(ValueError):
+    pass
+
+
 def floatify(value) -> float:
-    return float(str(value))
+    try:
+        return float(str(value))
+    except Exception as exc:
+        raise FloatifyError() from exc

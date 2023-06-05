@@ -60,6 +60,17 @@ class PipePath:
         del self._pipe_structure
 
     def add_pipe_path(self, start_point: Point_co, start_direction: Vector_co):
+        # extrusion points: ext_pts
+        ext_pts: list = []
+        # rotation points: rot_pts
+        rot_pts: list = []
+        # rotation angles: rot_deg
+        rot_deg: list = []
+        # extend backward/forward: ext_back, ext_fwd
+        ext_fwd: list = []
+        # discard cut direction vector: discard_vec
+        discard_vec: list = []
+
         ...
 
 

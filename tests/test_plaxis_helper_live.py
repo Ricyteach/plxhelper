@@ -217,3 +217,7 @@ def test_add_extrude_and_skew_cut_pipe_structure_multiple_turns(
     extruded_pipe_structures = extrude(
         to_extrude=pipe_structures, length=length0, vector=extrude_vector0
     )
+
+
+def test_translate():
+    translate(g_i.Geometry[:], (100, 100))

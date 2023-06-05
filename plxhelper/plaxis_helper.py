@@ -1,4 +1,5 @@
 """helpers for creating Plaxis 3D projects"""
+from contextlib import contextmanager
 from math import radians, cos
 from typing import TypedDict, Required, NotRequired, Sequence
 import numpy as np
@@ -15,7 +16,7 @@ from plxhelper.geo import (
     Vector_co,
     Point,
 )
-from plxhelper.plaxis_protocol import floatify
+from plxhelper.plaxis_protocol import floatify, FloatifyError
 
 
 def connect_server():
@@ -410,6 +411,10 @@ def cog(obj):
     return Point(*(floatify(v) for v in (cog_obj.x, cog_obj.y, cog_obj.z)))
 
 
+def point(obj):
+    return Point(*(floatify(v) for v in (obj.x, obj.y, obj.z)))
+
+
 def rotate(obj, angle, vector):
     result = g_i.arrayp(obj, *vector, angle, 2, True)
     g_i.delete(obj)
@@ -417,9 +422,40 @@ def rotate(obj, angle, vector):
 
 
 def translate(obj, vector):
-    result = g_i.arrayr(obj, 2, *vector)
-    g_i.delete(obj)
-    return result
+    match vector:
+        case [float(), float(), float()] | [int(), int(), int()]:
+            g_i.move(obj, vector)
+        case [float(), float()] | [int(), int()]:
+            g_i.move(obj, (*vector, 0))
+        case _:
+            raise TypeError("Invalid movement vector")
+    return obj
+
+
+def move(obj, x, y, z):
+    obj.x = x
+    obj.y = y
+    obj.z = z
+
+
+@contextmanager
+def temp_group(*plx_args):
+    """Temporary group of Plaxis objects.
+
+    If the last arg is a str it is the plx_ref, and is passed to g_i.group().
+    """
+    match plx_args:
+        case [*objs, plx_ref] if isinstance(plx_ref, str):
+            ...
+        case [*objs]:
+            ...
+        case _:
+            raise TypeError()
+    if not objs:
+        raise TypeError("no plaxis objects provided")
+    grp = g_i.group(*plx_args)
+    yield grp
+    g_i.ungroup(grp)
 
 
 def skew_cut(

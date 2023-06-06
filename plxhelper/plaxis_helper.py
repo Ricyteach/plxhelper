@@ -14,7 +14,7 @@ from plxhelper.geo import (
     D2Point_co,
     Vector,
     Vector_co,
-    Point,
+    Point, Point_co,
 )
 from plxhelper.plaxis_protocol import floatify, FloatifyError
 
@@ -415,10 +415,9 @@ def point(obj):
     return Point(*(floatify(v) for v in (obj.x, obj.y, obj.z)))
 
 
-def rotate(obj, angle, vector):
-    result = g_i.arrayp(obj, *vector, angle, 2, True)
-    g_i.delete(obj)
-    return result
+def rotate(obj, rot_point: Point_co, rx: float=0, ry: float=0, rz: float=0):
+    g_i.rotate(obj, rot_point, rx, ry, rz)
+    return obj
 
 
 def translate(obj, vector):
@@ -473,7 +472,7 @@ def skew_cut(
         raise ValueError("Skew cutting is limited to 180 degrees")
     cog_xy_cutter = cog(cutter_obj)[:2]
     rotated_cutter = rotate(
-        cutter_obj, skew_deg, ((*cog_xy_cutter, 0), (*cog_xy_cutter, 1))
+        cutter_obj, (*cog_xy_cutter, 0), rz=skew_deg
     )
     cut_results = cut(to_cut_obj, rotated_cutter)
     # eliminate objects "forward" of cutter in xy_direction

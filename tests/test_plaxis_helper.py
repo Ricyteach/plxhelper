@@ -1,6 +1,8 @@
 """Test plaxis_helper stuff. Do not import plaxis_helper; using patched version instead (see conftest.py)."""
 import pytest
 
+import plxhelper.pipe_structure
+
 
 def test_g_i_connected(plaxis_helper, g_i, s_i):
     assert plaxis_helper.s_i is s_i
@@ -83,4 +85,4 @@ def add_pipe_params(request):
 
 
 def test_add_pipe(plaxis_helper, add_pipe_params):
-    assert plaxis_helper.add_pipe_structure(*add_pipe_params)
+    assert plxhelper.pipe_structure.add_pipe_structure(*add_pipe_params)

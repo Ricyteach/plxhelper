@@ -1,22 +1,24 @@
 """helpers for creating Plaxis 3D projects"""
 from contextlib import contextmanager
-from math import radians, cos
-from typing import TypedDict, Required, NotRequired, Sequence
+from math import radians, cos, degrees, asin
+from typing import Sequence
 import numpy as np
 
 from plxscripting.easy import new_server
+
 import plxhelper.linear_elastic_soil as linear_elastic_soil
 import plxhelper.duncan_selig as duncan_selig
 import plxhelper.plate as plate
+import plxhelper.mohr_coulomb as mohr_coulomb
 from plxhelper.geo import (
     BoundingBox,
     D2PointPair_co,
     D2Point_co,
     Vector,
-    Vector_co,
-    Point, Point_co,
+    VectorLike,
+    Point, PointLike,
 )
-from plxhelper.plaxis_protocol import floatify, FloatifyError
+from plxhelper.plaxis_protocol import floatify
 
 
 def connect_server():
@@ -100,131 +102,44 @@ def add_box(
         g_i.delete(select_backfill_curve)
 
 
-class PipeStructure(TypedDict):
-    pipe: Required[object]
-    footing1: NotRequired[object]
-    footing2: NotRequired[object]
-    select_backfill: NotRequired[object]
-
-
-def add_pipe_structure(xyz, shape_info_dict, axis1, axis2=(0, 0, 1)) -> PipeStructure:
-    results = dict(poly_curve_obj=(poly_curve_obj := g_i.polycurve(xyz, axis1, axis2)))
-    for segment_info in shape_info_dict["segments"]:
-        _add_segment(poly_curve_obj, segment_info)
-
-    for offset, value in (
-        (offset, shape_info_dict.get(offset)) for offset in ("Offset1", "Offset2")
-    ):
-        if value is not None:
-            setattr(poly_curve_obj, offset, value)
-    if footing_info_dict := shape_info_dict.get("footing"):
-        results.update(
-            **add_footing_pair(*xyz, **footing_info_dict, axis1=axis1, axis2=axis2)
-        )
-    if select_backfill_info_dict := shape_info_dict.get("select_backfill"):
-        results.update(
-            select_backfill=add_select_backfill(
-                *xyz, **select_backfill_info_dict, axis1=axis1, axis2=axis2
-            )
-        )
-    return results
-
-
-def _add_segment(poly_curve_obj, segment_info):
-    segment_info_copy = segment_info.copy()
-    add_segment_func = _SEGMENT_ADD_DICT[segment_info_copy.pop("SegmentType")]
-    add_segment_func(poly_curve_obj, segment_info_copy)
-
-
-def _add_arc(poly_curve_obj, segment_info):
-    segment_obj = poly_curve_obj.add()
-    segment_obj.SegmentType = "Arc"
-    segment_obj.ArcProperties.setproperties(*segment_info.items())
-
-
-def _add_line(poly_curve_obj, segment_info):
-    segment_obj = poly_curve_obj.add()
-    segment_obj.SegmentType = "Line"
-    segment_obj.LineProperties.setproperties(*segment_info.items())
-
-
-def _add_symmetric_extend(poly_curve_obj, segment_info):
-    poly_curve_obj.extendtosymmetryaxis()
-    # sometimes this can return multiple segments so...:
-    if segment_info:
-        raise Exception(
-            "Unsupported; the return of an extended polycurve is a tad complex"
-        )
-
-
-def _add_symmetric_close(poly_curve_obj, segment_info):
-    poly_curve_obj.symmetricclose()
-    # sometimes this can return multiple segments so...:
-    if segment_info:
-        raise Exception(
-            "Unsupported; the return of a closed polycurve is a tad complex"
-        )
-
-
-_SEGMENT_ADD_DICT = dict(
-    Arc=_add_arc,
-    Line=_add_line,
-    SymmetricExtend=_add_symmetric_extend,
-    SymmetricClose=_add_symmetric_close,
-)
-
-
-class FootingPair(TypedDict):
-    footing1: Required[object]
-    footing2: Required[object]
-
-
-def add_footing_pair(
+def add_isosceles_trapezoid(
     x,
     y,
     z,
-    span,
-    rise,
-    width,
+    bot_width,
+    top_width,
     height,
-    outside,
-    key,
-    axis1,
-    axis2=(0, 0, 1),
-) -> FootingPair:
-    """Add footings as a pair of rectangular Surface/Polygons. The x, y, z is the top center of the structure to be
-    supported by the footing pair:
-
-              _______o________    <---- top center at o
-             /   ^structure^  \
-            /                  \
-     ______/_____          _____\______
-    |  footing2  |        |  footing1  |
-    |____________|        |____________|
-    """
-    dx = span / 2 + outside - width / 2
-    zi = z - rise + key
-    footing_objs = []
-    for plus_or_minus in (lambda lhs: lhs * rhs for rhs in (1, -1)):
-        xi = x + plus_or_minus(dx)
-        footing_box = add_box(xi, y, zi, width, height, axis1, axis2)
-        footing_objs.append(footing_box)
-    footing_pair = dict(zip(("footing1", "footing2"), footing_objs))
-    return footing_pair
-
-
-def add_select_backfill(
-    x,
-    y,
-    z,
-    width,
-    height,
-    h_min,
     axis1,
     axis2=(0, 0, 1),
 ):
-    zi = z + h_min
-    return add_box(x, y, zi, width, height, axis1, axis2)
+    """Add an isosceles trapezoid Surface/Polygon. The x, y, z is the top center of the trapezoid:
+
+      ____o____   <---- top center
+     /  trapez.\
+    /___________\
+    """
+
+    xi = x + top_width / 2
+    # we are now in the top right corner of the trapezoid
+    d_length = (bot_width-top_width)/2
+    leg_length = (d_length**2 + height**2)**0.5
+    theta = degrees(asin(d_length/leg_length))
+    d_theta = theta if top_width < bot_width else -theta
+    select_backfill_curve = g_i.polycurve(
+        (xi, y, z),
+        axis1,
+        axis2,
+        *("line", 180, top_width),
+        *("line", 90 + d_theta, leg_length),
+        *("line", 90 - d_theta, bot_width),
+    )[
+        0
+    ]  # index 0 because this returns a list of stuff, not just the curve. sigh. Plaxis.
+    select_backfill_curve.close()
+    try:
+        return g_i.surface(select_backfill_curve)
+    finally:
+        g_i.delete(select_backfill_curve)
 
 
 class phase:
@@ -288,12 +203,14 @@ def _g_i_method(method_name):
 
 MATERIAL_TYPE_DICT = dict(
     linear_elastic_soil=(_g_i_method("soilmat"), linear_elastic_soil.soilmat_kwargs),
+    mohr_coulomb_soil=(_g_i_method("soilmat"), mohr_coulomb.soilmat_kwargs),
     duncan_selig=(_g_i_method("soilmat"), duncan_selig.soilmat_kwargs),
     duncan_selig_interpolated=(
         _g_i_method("soilmat"),
         duncan_selig.soilmat_interpolated_kwargs,
     ),
     plate=(_g_i_method("platemat"), plate.platemat_kwargs),
+    weholite_pipe=(_g_i_method("platemat"), plate.weholite_pipe_kwargs),
 )
 
 
@@ -310,6 +227,10 @@ def material_creator(type_name, *args, **kwargs):
     return create_material
 
 
+# for introspection
+material_creator.types = list(MATERIAL_TYPE_DICT.keys())
+
+
 def skew_extrude(cross_section_obj, skew, lengths=None, xyz_vectors=None):
     """The cross_section_obj needs to be carefully supplied because this function assumes it is oriented in a
     "positive" direction, and is a "regular", symmetrical type of object - no weird shapes.
@@ -322,7 +243,7 @@ def skew_extrude(cross_section_obj, skew, lengths=None, xyz_vectors=None):
     """
 
 
-def extrude(to_extrude, length=None, vector: Vector_co = None):
+def extrude(to_extrude, length=None, vector: VectorLike = None):
     """Plaxis-extrude valid Plaxis objects (individual or lists/groups).
 
     Supply either:
@@ -331,9 +252,11 @@ def extrude(to_extrude, length=None, vector: Vector_co = None):
     3) just a length and derive the direction from the Plaxis objects (not yet supported)
     """
 
-    xyz_vector = Vector(*vector)
-    if xyz_vector is None:
-        raise NotImplementedError("will support grabbing xyz_vector later")
+    match vector:
+        case None:
+            raise NotImplementedError("will support grabbing xyz_vector later")
+        case [float()|int(), float()|int(), float()|int()]:
+            xyz_vector = Vector(*vector) if not isinstance(vector, Vector) else vector
     vec_magnitude = xyz_vector.magnitude
     if (center_length := length) is None:
         center_length = vec_magnitude
@@ -415,16 +338,17 @@ def point(obj):
     return Point(*(floatify(v) for v in (obj.x, obj.y, obj.z)))
 
 
-def rotate(obj, rot_point: Point_co, rx: float=0, ry: float=0, rz: float=0):
-    g_i.rotate(obj, rot_point, rx, ry, rz)
+def rotate(obj, rot_point: PointLike, rx: float = 0, ry: float = 0, rz: float = 0):
+    # must invert signs of rx, ry, rz because Plaxis follows the *lefthand* rule. SIGH.
+    g_i.rotate(obj, rot_point, -rx, -ry, -rz)
     return obj
 
 
 def translate(obj, vector):
     match vector:
-        case [float(), float(), float()] | [int(), int(), int()]:
+        case [float()|int(), float()|int(), float()|int()]:
             g_i.move(obj, vector)
-        case [float(), float()] | [int(), int()]:
+        case [float()|int(), float()|int()]:
             g_i.move(obj, (*vector, 0))
         case _:
             raise TypeError("Invalid movement vector")
@@ -457,29 +381,29 @@ def temp_group(*plx_args):
     g_i.ungroup(grp)
 
 
-def skew_cut(
+def directional_cut(
     to_cut_obj,
     cutter_obj,
-    skew_deg: float,
     xy_direction: tuple[float, float],
 ) -> list:
-    """Used to "skew cut" an object or group of objects using a "cutter" object. The cutter is assumed to be a plane
-    whose altitude is the z-axis.
+    """Used to "directionally cut" an object or group of objects using a "cutter" object. The cutter is assumed to be a
+    plane whose altitude is the z-axis.
 
     The pieces "forward" of the cutter are deleted.
     """
-    if abs(skew_deg) >= 180:
-        raise ValueError("Skew cutting is limited to 180 degrees")
-    cog_xy_cutter = cog(cutter_obj)[:2]
-    rotated_cutter = rotate(
-        cutter_obj, (*cog_xy_cutter, 0), rz=skew_deg
-    )
-    cut_results = cut(to_cut_obj, rotated_cutter)
-    # eliminate objects "forward" of cutter in xy_direction
+    cut_results = cut(to_cut_obj, cutter_obj)
     if len(cut_results) % 2 != 0:
         raise ValueError(
             f"cutter_obj did not cut into even number of pieces and this is not supported"
         )
+    cog_cutter = cog(cutter_obj)
+
+    # normal unit vector of rotated direction (which is assumed perpendicular to rotated cutting_obj plane)
+    # note: this vector is free from/unattached to the origin (ie, has its own origin)
+    # this "free" origin is assumed to be at the cog of the cutter, but all might still work ok if it isn't..? yeah.
+    normal_unit_vec_free = Vector(*xy_direction, 0).unit
+
+    # eliminate objects "forward" of cutter in xy_direction
     results_copy = cut_results[:]
     keeps = []
     for cut_pair in (
@@ -487,12 +411,13 @@ def skew_cut(
     ):
         keep = []
         discard = []
-        cog_xy_pair = tuple(cog(obj)[:2] for obj in cut_pair)
-        for point, obj in zip(cog_xy_pair, cut_pair):
-            vec_difference = Vector.__sub__((*point, 0), (*cog_xy_cutter, 0))
-            normal = Vector.rotate_z((*xy_direction, 0), skew_deg)
+        obj_cog_vecs = tuple(Vector(*cog(obj)) for obj in cut_pair)
+        for cog_obj_vec, obj in zip(obj_cog_vecs, cut_pair):
+            obj_cog_vec_free = cog_obj_vec - cog_cutter
+            # *in xy plane*, project the object's center of gravity point on the direction normal unit vector
+            dot_product = np.dot(normal_unit_vec_free[:2], obj_cog_vec_free[:2])
             # if the dot product is +, the point is "in front"
-            if (dot_product := np.dot(normal, vec_difference)) < 0:
+            if dot_product < 0:
                 keep.append(obj)
             elif dot_product > 0:
                 discard.append(obj)
@@ -502,6 +427,7 @@ def skew_cut(
         else:
             raise ValueError("the front piece to be removed could not be determined")
     fronts_grp = g_i.group(keeps)
+
     try:
         return keeps[0] if len(fronts_grp) == 1 else keeps
     finally:
@@ -511,7 +437,7 @@ def skew_cut(
 def _skew_cut_arbitrary(
     to_cut_obj,
     skew_deg: float,
-    cut_2d_definition: D2Point_co | D2PointPair_co,
+    cut_2d_definition: tuple[float, float],
     direction: tuple[float, float] | None = None,
 ) -> list:
     group_obj: Sequence = g_i.group(to_cut_obj)

@@ -1,7 +1,6 @@
 """helpers for linear elastic soil materials and objects"""
 
 import pandas as pd
-import numpy as np
 import pathlib
 
 tsv_path = pathlib.Path(__file__).parent / "tsv"

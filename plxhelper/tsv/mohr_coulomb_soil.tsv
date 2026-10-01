@@ -1,0 +1,3 @@
+SoilType	Strength	Identification	SoilModel	gammaUnsat	gammaSat	Eref	nu	cRef	phi	TensileStrength
+Concrete	4000	Normal Weight Concrete	Mohr-Coulomb	0.083912037	0.083912037	36250000	0.2	632.455532	54.90319877	400
+Grout	290	Cellular Grout	Mohr-Coulomb	0.027095	0.027095	145000	0.2	64.84597135	41.8103149	58

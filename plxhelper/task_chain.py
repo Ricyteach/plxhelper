@@ -16,7 +16,7 @@ def _guard_all_callable(value_iterable):
 
 
 class TaskChain(MutableSequence):
-    """A sequence of operations to be run."""
+    """A sequence of operations to be run. Call and iterate over it to run them."""
 
     _seq: list
 
@@ -40,11 +40,15 @@ class TaskChain(MutableSequence):
         yield from (step() for step in self._seq)
 
     def link(self, obj):
+        """Create a new end link in the chain."""
+
         _guard_callable(obj)
         self._seq.append(obj)
         return obj
 
     def insert(self, index: int, value: _T) -> None:
+        """Insert a new link in the chain."""
+
         _guard_callable(value)
         self._seq.insert(index, value)
 

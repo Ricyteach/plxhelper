@@ -1,8 +1,9 @@
 import contextlib
 from typing import Iterator
 
-from plxhelper.geo import Point_co, Vector_co, Point
-from plxhelper.plaxis_helper import add_box, PipeStructure, g_i
+from plxhelper.geo import PointLike, VectorLike, Point
+from plxhelper.plaxis_helper import add_box, g_i
+from plxhelper.pipe_structure import PipeStructure
 
 
 class PipePath:
@@ -59,7 +60,7 @@ class PipePath:
         g_i.delete(pipe_structure_grp)
         del self._pipe_structure
 
-    def add_pipe_path(self, start_point: Point_co, start_direction: Vector_co):
+    def add_pipe_path(self, start_point: PointLike, start_direction: VectorLike):
         # extrusion points: ext_pts
         ext_pts: list = []
         # rotation points: rot_pts
@@ -88,8 +89,8 @@ def add_pipe_path(
     shape_info_dict: dict,
     extrusion_lengths: list[float],
     angles_deg: list[float],
-    start_point: Point_co,
-    start_direction: Vector_co = (0, 1, 0),
+    start_point: PointLike,
+    start_direction: VectorLike = (0, 1, 0),
 ):
     with _pipe_path(shape_info_dict, extrusion_lengths, angles_deg) as pipe_path_inst:
         pipe_path_inst.add_pipe_path(start_point, start_direction)

@@ -3,12 +3,12 @@
 import pandas as pd
 from plxhelper.plaxis_helper import (
     connect_server,
-    add_pipe_structure,
     process_boreholes,
     phase,
     new_server,
     material_creator,
 )
+from plxhelper.pipe_structure import add_pipe_structure
 from plxhelper.exceptions import PlaxisHelperError
 import plxhelper.live_load as live_load
 from plxhelper.task_chain import TaskChain
@@ -108,7 +108,7 @@ def task_chain(
 
         parent_pipe_curve = add_pipe_structure(
             xyz=(0, ymin, ns.z_parent_crown),
-            xyz_direction=((1, 0, 0), (0, 0, 1)),
+            axis1=(1, 0, 0),
             shape_info_dict=parent_shape_info_dict,
         )
 

@@ -4,15 +4,15 @@ from scipy.special import cosdg
 from plxhelper.geo import BoundingBox
 from plxhelper.plaxis_helper import (
     connect_server,
-    add_pipe_structure,
     skew_extrude,
     extrude,
     cut,
     rotate,
-    skew_cut,
+    directional_cut,
     translate,
-    add_box,
+    add_box, cog,
 )
+from plxhelper.pipe_structure import add_pipe_structure
 
 connect_server()
 
@@ -53,7 +53,6 @@ grade_el = h_cover_in + h_AVG_in
 h_model_in = h_cover_in + h_AVG_in + (h_footing_in - h_key_in) + h_bedding_in
 water_el = grade_el - h_model_in
 xmin, ymin, xmax, ymax = (-w_AVG_in * 3, -w_AVG_in * 6, w_AVG_in * 3, w_AVG_in * 6)
-
 
 # pipe extrusion
 length = 500
@@ -138,13 +137,16 @@ def extruded_pipe_structures(pipe_shape_info_dict):
 
 
 @pytest.fixture
-def cutter_obj():
-    return g_i.surface(
+def cutter_obj(cutting_angle_deg):
+    cutter_obj = g_i.surface(
         (-span_AVG_in, length / 2, -h_AVG_in * 2),
         (span_AVG_in, length / 2, -h_AVG_in * 2),
         (span_AVG_in, length / 2, h_AVG_in * 2),
         (-span_AVG_in, length / 2, h_AVG_in * 2),
     )
+    cog_cutter = cog(cutter_obj)
+    rotate(cutter_obj, cog_cutter, rz=cutting_angle_deg)
+    return cutter_obj
 
 
 @pytest.fixture
@@ -165,15 +167,14 @@ def test_add_extrude_and_cut_pipe_structure(
     assert len(cut_list) == no_of_cuttings
 
 
-def test_add_extrude_and_skew_cut_pipe_structure(
+def test_add_extrude_and_directional_cut_pipe_structure(
     extruded_pipe_structures,
     cutter_obj,
-    cutting_angle_deg,
     no_of_cuttings,
     with_footings_and_backfill,
 ):
-    results = skew_cut(
-        extruded_pipe_structures, cutter_obj, cutting_angle_deg, extrude_vector[:2]
+    results = directional_cut(
+        extruded_pipe_structures, cutter_obj, extrude_vector[:2]
     )
     if isinstance(results, list):
         assert len(results) == no_of_cuttings / 2
